@@ -5,29 +5,8 @@ import multiprocessing
 import os
 import time
 import io
-import werkzeug
-from flask import Flask, render_template, request, send_file
 
-app = Flask(__name__)
 
-@app.route('/')
-def index():    
-    return send_file('qrcode.png', mimetype='image/png')
-
-@app.route('/close')
-def close():
-    shutdown_func = request.environ.get('werkzeug.server.shutdown')
-    if shutdown_func is None:
-        raise RuntimeError('Not running with the Werkzeug Server')
-    shutdown_func()
-
-def run_flask():
-    app.run(host='0.0.0.0', port=2314)
-
-import threading
-flask_thread = threading.Thread(target=run_flask)
-flask_thread.daemon = True
-flask_thread.start()
 BLUE = '\033[94m'
 GREEN = '\033[92m'
 RED = '\033[91m'

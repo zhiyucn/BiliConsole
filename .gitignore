@@ -2,3 +2,7 @@ cookie.txt
 qrcode.png
 user_info.png
 __pycache__
+app.build
+app.onefile-build
+app.exe
+app.dist

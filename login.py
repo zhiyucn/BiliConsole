@@ -3,7 +3,6 @@ import requests
 import json
 import time
 import os
-import multiprocessing
 def qrcode_login():
     #try:
         #flask = multiprocessing.Process(target=show_qrcode.run)
@@ -21,7 +20,7 @@ def qrcode_login():
     show_qrcode.render_qr_code(qr_str)
     key = data["data"]["qrcode_key"]
     print("请使用哔哩哔哩APP扫描二维码登录")
-    os.system("start http://127.0.0.1:2314/")
+    os.system("start ./qrcode.png")
     test_count = 0
     while True:
         test_count += 1
@@ -35,7 +34,6 @@ def qrcode_login():
         response = json.loads(response.text)
         if response["data"]["code"] == 0:
             print(f"在{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}登录成功！")
-            requests.get("http://127.0.0.1:2314/close")
             cookie = res.cookies.get_dict()
             print(cookie)
             with open("cookie.txt", "w") as f:
