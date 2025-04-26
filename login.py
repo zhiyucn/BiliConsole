@@ -1,9 +1,16 @@
-import qr_to_string
+import show_qrcode
 import requests
 import json
 import time
 import os
+import multiprocessing
 def qrcode_login():
+    #try:
+        #flask = multiprocessing.Process(target=show_qrcode.run)
+        #flask.start()
+    #except Exception as e:
+        #print(f"Flask服务器启动失败: {e}")
+        #return False
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Referer': 'https://passport.bilibili.com/',
@@ -11,9 +18,10 @@ def qrcode_login():
     response = requests.get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate", headers=headers)
     data = json.loads(response.text)
     qr_str = data["data"]["url"]
-    qr_to_string.render_qr_code(qr_str)
+    show_qrcode.render_qr_code(qr_str)
     key = data["data"]["qrcode_key"]
     print("请使用哔哩哔哩APP扫描二维码登录")
+    os.system("start http://127.0.0.1:2314/")
     test_count = 0
     while True:
         test_count += 1
@@ -27,6 +35,7 @@ def qrcode_login():
         response = json.loads(response.text)
         if response["data"]["code"] == 0:
             print(f"在{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}登录成功！")
+            requests.get("http://127.0.0.1:2314/close")
             cookie = res.cookies.get_dict()
             print(cookie)
             with open("cookie.txt", "w") as f:

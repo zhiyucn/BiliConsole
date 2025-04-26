@@ -1,8 +1,33 @@
 import requests
 import login
+import show_qrcode
+import multiprocessing
 import os
 import time
 import io
+import werkzeug
+from flask import Flask, render_template, request, send_file
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():    
+    return send_file('qrcode.png', mimetype='image/png')
+
+@app.route('/close')
+def close():
+    shutdown_func = request.environ.get('werkzeug.server.shutdown')
+    if shutdown_func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    shutdown_func()
+
+def run_flask():
+    app.run(host='0.0.0.0', port=2314)
+
+import threading
+flask_thread = threading.Thread(target=run_flask)
+flask_thread.daemon = True
+flask_thread.start()
 BLUE = '\033[94m'
 GREEN = '\033[92m'
 RED = '\033[91m'
@@ -20,7 +45,37 @@ from hashlib import md5
 import urllib.parse
 import time
 import requests
-
+def download_file(url, file_path, chunk_size=8192):
+    from tqdm import tqdm
+                
+    try:
+        # 获取文件总大小
+        response = requests.head(url)
+        total_size = int(response.headers.get('content-length', 0))
+                
+        # 创建进度条
+        progress = tqdm(total=total_size, unit='B', unit_scale=True)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+            'Referer': 'https://www.bilibili.com/'
+        }
+        # 单线程下载
+        response = requests.get(url, stream=True, headers=headers, cookies=json.loads(open("cookie.txt", "r").read()))
+        response.raise_for_status()
+                
+        with open(file_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:
+                    f.write(chunk)
+                    progress.update(len(chunk))
+                    
+        progress.close()
+                
+            
+    except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise e
 mixinKeyEncTab = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
     33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
@@ -84,13 +139,15 @@ if Login:
     print("2. 查看cookie")
     print("3. 查看登录状态")
     print("4. 获取用户信息")
-    print("5. 退出")
+    print("5. 看个视频")
+    print("6. 退出")
 else:
     print("1. 登录")
     print("2. 查看cookie")
     print("3. 查看登录状态")
     print("4. 获取用户信息")
-    print("5. 退出")
+    print("5. 看个视频")
+    print("6. 退出")
 
 while True:
     choice = input("请输入操作编号: ")
@@ -101,8 +158,8 @@ while True:
             Login = False
         else:
             print(RED + "准备开始登录" + RESET)
-            print(RED + "我们会给你5秒钟的时间拉大终端来显示二维码" + RESET)
-            for i in range(500, 0, -1):
+            print(RED + "我们会给你2.5秒钟的时间准备扫码" + RESET)
+            for i in range(250, 0, -1):
                 print(f"倒计时: {i/100}秒", end="\r")
                 time.sleep(0.01)
             temp = login.qrcode_login()
@@ -143,6 +200,7 @@ while True:
             url = f"https://api.bilibili.com/x/space/wbi/acc/info?{query}"
             import json
             response = requests.get(url, headers=headers, cookies=json.loads(open("cookie.txt", "r").read()))
+            
         else:
             print(RED + "cookie.txt文件不存在" + RESET)
             print(RED + "此API需要登陆" + RESET)
@@ -231,3 +289,30 @@ while True:
         else:
             print(RED + "获取失败" + RESET)
             print(f"错误信息: {data['message']}")
+    elif choice == "5":
+        av = input("请输入av或bv号: ")
+        print("正在获取视频信息...")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'referer': f"https://www.bilibili.com/video/{av}"
+        }
+        if av.startswith("BV"):
+            print("检测到BV号，正在转换为AV号...")
+            av = requests.get(f"https://api.bilibili.com/x/web-interface/view?bvid={av}", headers=headers).json()["data"]["aid"]
+            print(f"AV号: {av}")
+        print("开始获取cid Step 1")
+        #if av.startswith("BV"):
+        #    response = requests.get(f"https://api.bilibili.com/x/web-interface/view?bvid={av}",headers=headers)
+        #else:
+        response = requests.get(f"https://api.bilibili.com/x/web-interface/view?aid={av}", headers=headers)
+        data = response.json()
+        if 'data' not in data or 'cid' not in data['data']:
+            print(f"{RED}获取视频信息失败: {data.get('message', '未知错误')}{RESET}")
+        #if av.startswith("BV"):
+        #    cid = data['data']['cid']
+        #    av = data['data']['aid']
+        cid = data['data']['cid']
+        print("开始获取链接 Step 2")
+        play_url = requests.get(f"https://api.bilibili.com/x/player/playurl?avid={av}&cid={cid}", headers=headers).json()["data"]["durl"][0]["url"]
+        print("开始下载 Step 3")
+        download_file(play_url, f"{av}.mp4")
