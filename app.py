@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+from operator import index
 import requests
 import login
 import show_qrcode
@@ -5,11 +7,18 @@ import multiprocessing
 import os
 import time
 import io
-
-
+import json
+with open("config.json", "r") as f:
+            config_content = f.read()
+            #print(json.loads(config_content))
+            conf = json.loads(config_content)
+VERSION = "1.0.1 Beta"
 BLUE = '\033[94m'
 GREEN = '\033[92m'
 RED = '\033[91m'
+YELLOW = '\033[93m'
+PURPLE = '\033[95m'
+CYAN = '\033[96m'
 RESET = '\033[0m'  # 重置颜色
 if os.path.exists("cookie.txt"):
     print(GREEN + "已登录" + RESET)
@@ -111,26 +120,31 @@ print(f"""{BLUE}
 ╚═════╝ ╚═╝╚══════╝╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝ ╚═════╝ ╚══════╝╚══════╝     {RESET}                                                                        
 """)
 
-print(GREEN + "Version: 1.0.0" + RESET)
-print(RED + "请执行操作" + RESET)
-if Login:
-    print("1. 退出登录")
-    print("2. 查看cookie")
-    print("3. 查看登录状态")
-    print("4. 获取用户信息")
-    print("5. 看个视频")
-    print("6. 退出")
-else:
-    print("1. 登录")
-    print("2. 查看cookie")
-    print("3. 查看登录状态")
-    print("4. 获取用户信息")
-    print("5. 看个视频")
-    print("6. 退出")
+def help():
+    if Login:
+        print("1. 退出登录 logout")
+        print("2. 查看cookie cookie")
+        print("3. 查看登录状态 status")
+        print("4. 获取用户信息 userinfo")
+        print("5. 看个视频 video")
+        print("6. 推荐列表 recommend")
+        print("7. 设置 setting")
+        print("8. 退出 exit")
+    else:
+        print("1. 登录 login")
+        print("2. 查看登录状态 status")
+        print("3. 获取用户信息 userinfo")
+        print("4. 看个视频 video")
+        print("5. 推荐列表 recommend")
+        print("6. 设置 setting")
+        print("7. 退出 exit")
+print(GREEN + f"Version: {VERSION}" + RESET)
+print(RED + "请输入对应指令，不是数字序号！" + RESET)
+help()
 
 while True:
-    choice = input("请输入操作编号: ")
-    if choice == "1":
+    choice = input("BiliConsole >>  ")
+    if choice == "logout" or choice == "login":
         if Login:
             os.remove("cookie.txt")
             print(GREEN + "退出登录成功" + RESET)
@@ -148,18 +162,18 @@ while True:
             else:
                 print(RED + "登录失败" + RESET)
                 Login = False
-    elif choice == "2":
+    elif choice == "cookie":
         if os.path.exists("cookie.txt"):
             with open("cookie.txt", "r") as f:
                 print(f.read())
         else:
             print(RED + "cookie.txt文件不存在" + RESET)
-    elif choice == "3":
+    elif choice == "status":
         if os.path.exists("cookie.txt"):
             print(GREEN + "已登录" + RESET)
         else:
             print(RED + "未登录" + RESET)
-    elif choice == "4":
+    elif choice == "userinfo":
         uid = input("请输入用户uid: ")
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -216,7 +230,7 @@ while True:
                 data2 = response.json()
                 from PIL import Image, ImageDraw, ImageFont, ImageFilter
                 # 创建一个空白的图片
-                img = Image.new('RGB', (800, 800), color = (255, 255, 255))
+                img = Image.new('RGB', (800, 850), color = (255, 255, 255))
                 # 下载头像
                 response = requests.get(face)
                 avatar = Image.open(io.BytesIO(response.content))
@@ -258,7 +272,7 @@ while True:
                 
                 # 最底部
                 draw.text((400, 750), f"Powered by BiliConsole", fill=(0, 0, 0), font=info_font)
-                draw.text((400, 780), f"Version: 1.0.0", fill=(0, 0, 0), font=info_font)
+                draw.text((400, 780), f"Version: {VERSION}", fill=(0, 0, 0), font=info_font)
                 draw.text((400, 810), f"MIT License", fill=(0, 0, 0), font=info_font)
                 # 保存图片
                 img.save('user_info.png')
@@ -268,7 +282,7 @@ while True:
         else:
             print(RED + "获取失败" + RESET)
             print(f"错误信息: {data['message']}")
-    elif choice == "5":
+    elif choice == "video":
         av = input("请输入av或bv号: ")
         print("正在获取视频信息...")
         headers = {
@@ -292,6 +306,158 @@ while True:
         #    av = data['data']['aid']
         cid = data['data']['cid']
         print("开始获取链接 Step 2")
-        play_url = requests.get(f"https://api.bilibili.com/x/player/playurl?avid={av}&cid={cid}", headers=headers).json()["data"]["durl"][0]["url"]
-        print("开始下载 Step 3")
-        download_file(play_url, f"{av}.mp4")
+        play_url = requests.get(f"https://api.bilibili.com/x/player/playurl?avid={av}&cid={cid}", headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': f'https://www.bilibili.com/video/av{av}'
+        }).json()["data"]["durl"][0]["url"]
+        print("你想做什么？")
+        print("1. 下载")
+        print("2. 播放(FFmpeg 模式)")
+        choice = input()
+        if choice == "1":
+            print("开始下载 Step 3")
+            download_file(play_url, f"{av}.mp4")
+        elif choice == "2":
+            print("正在准备播放...")
+            try:
+                import subprocess
+                subprocess.run(["ffplay", "-autoexit", "-headers", f"Referer: https://www.bilibili.com/video/av{av}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36\r\n", play_url], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"播放失败: {e}")
+            except FileNotFoundError:
+                print("未找到ffplay，请先安装FFmpeg并确保ffplay在PATH中")
+    elif choice == "recommend":
+        print("正在获取推荐列表...")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+
+        }
+        url = "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd"
+        import json
+        response = requests.get(url, headers=headers, cookies=json.loads(open("cookie.txt", "r").read()))
+        data = response.json()
+        if data["code"] == 0:
+            print("获取成功")
+            print("推荐列表:")
+            for i, item in enumerate(data["data"]["item"]):
+                print(f"序号: {i+1}")
+                print(f"标题: {item['title']}")
+                print(f"up主: {item['owner']['name']}")
+                print(f"----------------------分割线-----------------------")
+            choice = input("请输入你想看的视频的序号: ")
+            bv = data["data"]["item"][int(choice) - 1]["bvid"]
+            print("正在获取视频信息...")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            }
+            url = f"https://api.bilibili.com/x/web-interface/view?bvid={bv}"
+            response = requests.get(url, headers=headers)
+            data = response.json()
+            if data["code"] == 0:
+                print("获取成功")
+                print("视频信息:")
+                print(f"标题: {data['data']['title']}")
+                print(f"up主: {data['data']['owner']['name']}")
+                print(f"BV号: {data['data']['bvid']}")
+                print(f"播放量: {data['data']['stat']['view']}")
+                print(f"你想做什么？")
+                print("1. 下载")
+                print("2. 播放")
+                choice = input()
+                if choice == "1":
+                    av = data['data']['bvid']
+                    print("正在获取视频信息...")
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        'referer': f"https://www.bilibili.com/video/{av}"
+                    }
+                    if av.startswith("BV"):
+                        print("检测到BV号，正在转换为AV号...")
+                        av = requests.get(f"https://api.bilibili.com/x/web-interface/view?bvid={av}", headers=headers).json()["data"]["aid"]
+                        print(f"AV号: {av}")
+                    print("开始获取cid Step 1")
+                    #if av.startswith("BV"):
+                    #    response = requests.get(f"https://api.bilibili.com/x/web-interface/view?bvid={av}",headers=headers)
+                    #else:
+                    response = requests.get(f"https://api.bilibili.com/x/web-interface/view?aid={av}", headers=headers)
+                    data = response.json()
+                    if 'data' not in data or 'cid' not in data['data']:
+                        print(f"{RED}获取视频信息失败: {data.get('message', '未知错误')}{RESET}")
+                    #if av.startswith("BV"):
+                    #    cid = data['data']['cid']
+                    #    av = data['data']['aid']
+                    cid = data['data']['cid']
+                    print("开始获取链接 Step 2")
+                    play_url = requests.get(f"https://api.bilibili.com/x/player/playurl?avid={av}&cid={cid}", headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/'
+        }).json()["data"]["durl"][0]["url"]
+                    print("开始下载 Step 3")
+                    download_file(play_url, f"{av}.mp4")
+                elif choice == "2":
+                    av = data['data']['bvid']
+                    print("正在获取视频信息...")
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        'referer': f"https://www.bilibili.com/video/{av}"
+                    }
+                    if av.startswith("BV"):
+                        print("检测到BV号，正在转换为AV号...")
+                        av = requests.get(f"https://api.bilibili.com/x/web-interface/view?bvid={av}", headers=headers).json()["data"]["aid"]
+                        print(f"AV号: {av}")
+                    print("开始获取cid Step 1")
+                    #if av.startswith("BV"):
+                    #    response = requests.get(f"https://api.bilibili.com/x/web-interface/view?bvid={av}",headers=headers)
+                    #else:
+                    response = requests.get(f"https://api.bilibili.com/x/web-interface/view?aid={av}", headers=headers)
+                    data = response.json()
+                    if 'data' not in data or 'cid' not in data['data']:
+                        print(f"{RED}获取视频信息失败: {data.get('message', '未知错误')}{RESET}")
+                    #if av.startswith("BV"):
+                    #    cid = data['data']['cid']
+                    #    av = data['data']['aid']
+                    cid = data['data']['cid']
+                    print("开始获取链接 Step 2")
+                    play_url = requests.get(f"https://api.bilibili.com/x/player/playurl?avid={av}&cid={cid}", headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/'
+        }).json()["data"]["durl"][0]["url"]
+                    print("开始播放 Step 3")
+                    print("正在准备播放...")
+                    try:
+                        import subprocess
+                        subprocess.run(["ffplay", "-autoexit", "-headers", f"Referer: https://www.bilibili.com/video/av{av}\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36\r\n", play_url], check=True)
+                    except subprocess.CalledProcessError as e:
+                        print(f"播放失败: {e}")
+                    except FileNotFoundError:
+                        print("未找到ffplay，请先安装FFmpeg并确保ffplay在PATH中")
+    elif choice == "help":
+        help()
+    elif choice == "setting":
+        if not os.path.exists("config.json"):
+            with open("config.json", "w") as f:
+                f.write(json.dump({"video_get":[],'video_recommend':[False]}))
+        
+        
+        print("设置")
+        print("1. 视频获取")
+        print("2. 视频推荐")
+        choice = int(input())
+        if choice == 2:
+            print(f"1. 视频推荐阻止显式推广 {conf["video_recommend"][0]}")
+            print("输入配置序号")
+            choice = int(input())
+            #print(type(conf["video_recommend"][choice - 1]))
+            if isinstance(conf["video_recommend"][choice - 1], bool):
+                if conf["video_recommend"][choice -1]:
+                    print("已设置为 False")
+                    conf["video_recommend"][choice -1] = False
+                else:
+                    conf["video_recommend"][choice -1] = True
+                    print("已设置为 True")
+                with open("config.json", "w+") as f:
+                    json.dump(conf, f)
+
+
+    elif choice == "exit":
+        break

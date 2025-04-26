@@ -6,3 +6,4 @@ app.build
 app.onefile-build
 app.exe
 app.dist
+config.json
