@@ -313,6 +313,7 @@ while True:
         print("你想做什么？")
         print("1. 下载")
         print("2. 播放(FFmpeg 模式)")
+        print("3. 查看评论区")
         choice = input()
         if choice == "1":
             print("开始下载 Step 3")
@@ -326,6 +327,22 @@ while True:
                 print(f"播放失败: {e}")
             except FileNotFoundError:
                 print("未找到ffplay，请先安装FFmpeg并确保ffplay在PATH中")
+        elif choice == "3":
+            print("正在获取评论区...")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            }
+            response = requests.get(f"https://api.bilibili.com/x/v2/reply?type=1&oid={av}", headers=headers)
+            data = response.json()
+            if data["code"] == 0:
+                print("获取成功")
+                print("评论区:")
+                for item in data["data"]["replies"]:
+                    print(f"用户名: {item['member']['uname']}")
+                    print(f"评论内容: {item['content']['message']}")
+                    print(f"----------------------分割线----------------------")
+            else:
+                print(f"获取失败: {data['message']}")
     elif choice == "recommend":
         print("正在获取推荐列表...")
         headers = {
@@ -363,7 +380,9 @@ while True:
                 print(f"你想做什么？")
                 print("1. 下载")
                 print("2. 播放")
+                print("3. 查看评论区")
                 choice = input()
+                av = data['data']['bvid']
                 if choice == "1":
                     av = data['data']['bvid']
                     print("正在获取视频信息...")
@@ -391,11 +410,15 @@ while True:
                     play_url = requests.get(f"https://api.bilibili.com/x/player/playurl?avid={av}&cid={cid}", headers={
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Referer': 'https://www.bilibili.com/'
-        }).json()["data"]["durl"][0]["url"]
+        }).json()["data"]["durl"][len(data["data"]["durl"])-1]
                     print("开始下载 Step 3")
                     download_file(play_url, f"{av}.mp4")
                 elif choice == "2":
                     av = data['data']['bvid']
+                    if av.startswith("av"):
+                        # 去除av前缀
+                        av = av[2:]
+
                     print("正在获取视频信息...")
                     headers = {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -431,6 +454,18 @@ while True:
                         print(f"播放失败: {e}")
                     except FileNotFoundError:
                         print("未找到ffplay，请先安装FFmpeg并确保ffplay在PATH中")
+                elif choice == "3":
+                    response = requests.get(f"https://api.bilibili.com/x/v2/reply?type=1&oid={data['data']['aid']}&sort=2&pn=1&ps=20&jsonp=jsonp", headers=headers)
+                    data = response.json()
+                    if data["code"] == 0:
+                        print("获取成功")
+                        for i, item in enumerate(data["data"]["replies"]):
+                            print(f"评论{i+1}: {item['content']['message']}")
+                            print(f"作者: {item['member']['uname']}")
+                            print(f"时间: {item['ctime']}")
+                            print(f"----------------------分割线-----------------------")
+                    else:   
+                        print(f"获取评论失败: {data.get('message', '未知错误')}")
     elif choice == "help":
         help()
     elif choice == "setting":
